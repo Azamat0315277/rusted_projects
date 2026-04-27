@@ -10,13 +10,15 @@ use axum::routing::get_service;
 use serde::Deserialize;
 use tower_http::services::ServeDir;
 use std::net::SocketAddr;
-
+pub use self::error::{Error, Result};
 mod error;
+mod web;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let routes_all = Router::new()
     .merge(routes_hello())
+    .merge(web::routes_login::routes())
     .fallback_service(routes_static());
 
     // region: -- Start Server
