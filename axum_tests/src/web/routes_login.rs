@@ -7,12 +7,14 @@ use axum::{
 use serde::Deserialize;
 use serde_json::Value;
 use serde_json::json;
+use tower_cookies::Cookie;
+use tower_cookies::Cookies;
 
 pub fn routes() -> Router {
     Router::new().route("/api/login", post(api_login))
 }
 
-async fn api_login(payload: Json<LoginPayLoad>) -> Result<Json<Value>> {
+async fn api_login(cookies: Cookies, payload: Json<LoginPayLoad>) -> Result<Json<Value>> {
     println!("->> {:<12} - api_login", "HANDLER");
 
     // TODO: Implement readl db/auth logic.
@@ -20,7 +22,7 @@ async fn api_login(payload: Json<LoginPayLoad>) -> Result<Json<Value>> {
         return Err(Error::LoginFail);
     }
 
-    // TODO: Set cookies
+    cookies.add(Cookie::new(web::AUTH_TOKEN, "user-1.exp.sign"));
 
     // Create the succes body.
     let body = Json(json!({

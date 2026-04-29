@@ -3,11 +3,13 @@
 use axum::Router;
 use axum::extract::Path;
 use axum::extract::Query;
+use axum::middleware;
 use axum::response::Html;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::routing::get_service;
 use serde::Deserialize;
+use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
 use std::net::SocketAddr;
 pub use self::error::{Error, Result};
@@ -19,6 +21,8 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let routes_all = Router::new()
     .merge(routes_hello())
     .merge(web::routes_login::routes())
+    .layer(middleware::map_response(main_response_mapper))
+    .layer(CookieManagerLayer::new())
     .fallback_service(routes_static());
 
     // region: -- Start Server
@@ -29,6 +33,13 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     // endregion: -- Start Server
     
     Ok(())
+}
+
+async fn main_response_mapper(res: Response) -> Response {
+    println!("->> {:<12} - main_response_mapper", "RES_MAPPER");
+
+    println!();
+    res
 }
 
 fn routes_hello() -> Router {
