@@ -1,5 +1,7 @@
 #![allow(unused)] // For beginning only
 
+pub use self::error::{Error, Result};
+use crate::model::ModelController;
 use axum::Router;
 use axum::extract::Path;
 use axum::extract::Query;
@@ -9,21 +11,27 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::get;
 use axum::routing::get_service;
 use serde::Deserialize;
+use std::net::SocketAddr;
 use tower_cookies::CookieManagerLayer;
 use tower_http::services::ServeDir;
-use std::net::SocketAddr;
-pub use self::error::{Error, Result};
+mod ctx;
 mod error;
+mod model;
 mod web;
 
 #[tokio::main]
-async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
+    let mc = ModelController::new().await?;
+
     let routes_all = Router::new()
-    .merge(routes_hello())
-    .merge(web::routes_login::routes())
-    .layer(middleware::map_response(main_response_mapper))
-    .layer(CookieManagerLayer::new())
-    .fallback_service(routes_static());
+        .merge(routes_hello())
+        .merge(web::routes_login::routes())
+        .nest("/api", web::routes_tickets::routes(mc.clone())
+            .route_layer(middleware::from_fn(web::mw_auth::mw_require_auth))
+        )
+        .layer(middleware::map_response(main_response_mapper))
+        .layer(CookieManagerLayer::new())
+        .fallback_service(routes_static());
 
     // region: -- Start Server
     let addr = SocketAddr::from(([127, 0, 0, 1], 8080));
@@ -31,7 +39,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, routes_all).await?;
     // endregion: -- Start Server
-    
+
     Ok(())
 }
 
@@ -44,15 +52,13 @@ async fn main_response_mapper(res: Response) -> Response {
 
 fn routes_hello() -> Router {
     Router::new()
-    .route("/hello", get(handler_hello))
-    .route("/hello2", get(handler_hello2))
+        .route("/hello", get(handler_hello))
+        .route("/hello2", get(handler_hello2))
 }
 
 fn routes_static() -> ServeDir {
     ServeDir::new("./")
 }
-
-
 
 #[derive(Debug, Deserialize)]
 struct HelloParams {

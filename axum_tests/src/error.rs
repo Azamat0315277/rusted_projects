@@ -1,12 +1,29 @@
-
-use axum::response::{IntoResponse, Response};
 use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug)]
 pub enum Error {
+    // -- Login
     LoginFail,
+
+    // -- Auth errors.
+    AuthFailNoAuthTokenCookie,
+    AuthFailtokenwrongFormat,
+    AuthFailCtxNotInRequestExt,
+
+    // -- Model errors.
+    TicketDeleteFailIdNotFound { id: u64 },
+
+    // --Server startup errors
+    IoError(std::io::Error),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Error::IoError((err))
+    }
 }
 
 impl IntoResponse for Error {
